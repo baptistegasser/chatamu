@@ -21,15 +21,21 @@ public class Client {
 
     public void launch()  {
         try {
-            System.out.println("Bonjour, merci de vous connecter.");
-            System.out.println("Quel est votre pseudo ?");
+            System.out.println("Hello. Please connect.");
+            System.out.println("Enter your name : ");
             String connexion = inClient.readLine().trim();
             out.write(ChatamuProtocol.PREFIX_LOGIN + connexion + "\n");
             out.flush();
-            if (inServer.readLine().trim().equals(ChatamuProtocol.Error.ERROR_LOGIN)) throw new IOException("Erreur lors de la connexion");
+            System.out.println("Waiting for server ...");
+            while(true) {
+                String reponse = inServer.readLine().trim();
+                if(reponse.equals(ChatamuProtocol.Error.ERROR_LOGIN)) throw new IOException("Error while connecting");
+                else if (reponse.equals(ChatamuProtocol.LOGIN_SUCCESS)) break;
+            }
             new Thread(new HandlerReceived(inServer)).start();
             communication();
             closeAll();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -43,7 +49,7 @@ public class Client {
     }
 
     public void communication()  {
-        System.out.println("Vous êtes connectés, vous pouvez maintenant communiquer.");
+        System.out.println("You're now connected and you can start tchating !");
         String message;
         while (true) {
             try {
@@ -59,7 +65,7 @@ public class Client {
 
     public static void main(String[] args) {
         String adress = "localhost";
-        System.out.println("Connexion au serveur d'adresse " + adress + " et de port " + ChatamuProtocol.DEFAULT_PORT );
+        System.out.println("Connecting to localhost " + adress + ", port  " + ChatamuProtocol.DEFAULT_PORT );
             try {
                 Client client = new Client(adress);
                 client.launch();
@@ -82,9 +88,9 @@ public class Client {
                 try {
                     messageRecv = reader.readLine();
                     System.out.println(messageRecv);
-                    if(inServer.readLine().trim().equals(ChatamuProtocol.Error.ERROR_MESSAGE))  throw new IOException("Erreur lors de l'envoi du message");
+                    if(inServer.readLine().trim().equals(ChatamuProtocol.Error.ERROR_MESSAGE))  throw new IOException("Error while sending message.");
                 } catch (IOException e) {
-                    System.out.println("Au revoir");
+                    System.out.println("Bye !");
                     break;
                 }
             }
