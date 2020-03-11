@@ -10,4 +10,7 @@ public final class ChatamuProtocol {
 
     public static final String PREFIX_LOGIN    = "LOGIN ";
     public static final String PREFIX_MESSAGE  = "MESSAGE ";
+
+    public static final String LOGOUT_MESSAGE = "LOGOUT";
+    public static final String LOGIN_SUCCESS = "OK LOGIN";
 }
