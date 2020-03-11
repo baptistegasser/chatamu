@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.Socket;
+import protocol.*;
 
 public class Client {
 
@@ -18,28 +19,28 @@ public class Client {
             BufferedReader inServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             BufferedReader inClient = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Bonjour, merci de vous connecter. \n");
-            System.out.println("Format : LOGIN pseudo");
+            System.out.println("Quel est votre pseudo ?");
             String connexion = inClient.readLine().trim();
-            out.write(connexion);
+            out.write(ChatamuProtocol.PREFIX_LOGIN + connexion);
             out.flush();
-            if(inServer.readLine().trim().equals("ERROR LOGIN aborting chatamu protocol"))  throw new IOException("Erreur lors de la connexion");
+            if(inServer.readLine().trim().equals(ChatamuProtocol.Error.ERROR_LOGIN))  throw new IOException("Erreur lors de la connexion");
             communication(inClient, inServer, out);
+            socket.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     public static void communication(BufferedReader inClient, BufferedReader inServer, BufferedWriter out ) {
-        System.out.println("Vous êtes connectés.");
-        System.out.println("Format des messages : MESSAGE message");
+        System.out.println("Vous êtes connectés, vous pouvez parler.");
         String message;
         while (true) {
             try {
                 message = inClient.readLine().trim();
-                out.write(message);
+                out.write(ChatamuProtocol.PREFIX_MESSAGE + message);
                 out.flush();
-                if(message.contains("quit")) break;
-                if(inServer.readLine().trim().equals("ERROR chatamu"))  throw new IOException("Erreur lors de l'envoi du message");
+                if(message.equals("quit") || message.equals("QUIT")) break;
+                if(inServer.readLine().trim().equals(ChatamuProtocol.Error.ERROR_MESSAGE))  throw new IOException("Erreur lors de l'envoi du message");
             }  catch (Exception e) {
                 e.printStackTrace();
             }
@@ -61,7 +62,4 @@ public class Client {
             System.out.println("Usage: java Client port");
         }
     }
-
-
-
 }
