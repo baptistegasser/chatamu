@@ -2,11 +2,13 @@ import protocol.ChatamuProtocol;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.HashMap;
 import java.util.Iterator;
 
 /**
@@ -16,6 +18,7 @@ public class Server {
     private Selector selector;
     private ServerSocketChannel serverSocket;
     private InetSocketAddress socketAddress;
+    private HashMap<SocketAddress, String> connectedUsers = new HashMap<>();
 
     /**
      * Initialize the server.
@@ -54,42 +57,85 @@ public class Server {
             while (keyIterator.hasNext()) {
                 SelectionKey key = keyIterator.next();
 
-                // New connection
+                // Appropriate handle calls
                 if (key.isAcceptable()) {
-                    SocketChannel client = serverSocket.accept();
-                    client.configureBlocking(false);
-                    client.register(selector, SelectionKey.OP_READ);
-
-                }
-                // Packet received
-                else if (key.isReadable()) {
-                    SocketChannel client = (SocketChannel) key.channel();
-
-                    ByteBuffer recvBuf = ByteBuffer.allocate(256);
-                    client.read(recvBuf);
-                    String msg = new String(recvBuf.array()).trim();
-
-                    if (msg.startsWith(ChatamuProtocol.PREFIX_LOGIN)) {
-                        System.out.println(msg.replace(ChatamuProtocol.PREFIX_LOGIN, "") + " connected !");
-                        client.write(ByteBuffer.wrap(ChatamuProtocol.LOGIN_SUCCESS.getBytes()));
-                    } else if (msg.startsWith(ChatamuProtocol.PREFIX_MESSAGE)) {
-                        System.out.println("name> " + msg.replace(ChatamuProtocol.PREFIX_MESSAGE, ""));
-                    } else if (msg.equals(ChatamuProtocol.LOGOUT_MESSAGE)) {
-                        client.close();
-                    } else {
-                        System.err.println("Invalid message for protocol chatamu");
-                        // Send error message, if fail close the client
-                        try {
-                            client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_MESSAGE.getBytes()));
-                        } catch (IOException ioe) {
-                            client.close();
-                        }
-                    }
+                    handleAcceptable(key);
+                } else if (key.isReadable()) {
+                    handleReadable(key);
                 }
             }
-
             // Remove the iterated keys
             keyIterator.remove();
+        }
+    }
+
+    /**
+     * Handle a SelectionKey if it's acceptable
+     * @param key
+     */
+    private void handleAcceptable(SelectionKey key) {
+        try {
+            SocketChannel client = serverSocket.accept();
+
+            client.configureBlocking(false);
+            client.register(selector, SelectionKey.OP_READ);
+        } catch (IOException ioe) {
+            System.err.println("Failed to accept a client.");
+            ioe.printStackTrace();
+        }
+    }
+
+    private void handleReadable(SelectionKey key) {
+        try {
+            SocketChannel client = (SocketChannel) key.channel();
+            SocketAddress client_addr = client.getRemoteAddress();
+
+            // Read the from the socket channel
+            ByteBuffer recvBuf = ByteBuffer.allocate(256);
+            client.read(recvBuf);
+            String msg = new String(recvBuf.array()).trim();
+
+            if (msg.startsWith(ChatamuProtocol.PREFIX_LOGIN)) {
+                final String pseudo = msg.replace(ChatamuProtocol.PREFIX_LOGIN, "");
+                if (!isUserConnected(client_addr)) {
+                    registerUser(client_addr, pseudo);
+                    client.write(ByteBuffer.wrap(ChatamuProtocol.LOGIN_SUCCESS.getBytes()));
+                    System.out.println(pseudo + " connected !");
+                } else {
+                    client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
+                }
+            }
+            else if (msg.startsWith(ChatamuProtocol.PREFIX_MESSAGE))
+            {
+                if (isUserConnected(client_addr)) {
+                    final String content = msg.replace(ChatamuProtocol.PREFIX_MESSAGE, "");
+                    final String pseudo = getUserPseudo(client_addr);
+                    System.out.println(pseudo + "> " + content);
+                } else {
+                    client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
+                }
+            }
+            else if (msg.equals(ChatamuProtocol.LOGOUT_MESSAGE))
+            {
+                if (isUserConnected(client_addr)) {
+                    unregisterUser(client_addr);
+                } else {
+                    client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
+                }
+            }
+            else {
+                System.err.println("Invalid message for protocol chatamu");
+                System.err.println("Got: '" + msg + "'");
+                // Send error message, if fail close the client
+                try {
+                    client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_MESSAGE.getBytes()));
+                } catch (IOException ioe) {
+                    client.close();
+                }
+            }
+        } catch (IOException ioe) {
+            System.err.println("Failed to handle read operation of a client.");
+            ioe.printStackTrace();
         }
     }
 
@@ -103,6 +149,22 @@ public class Server {
         if (selector.isOpen()) {
             selector.close();
         }
+    }
+
+    private String registerUser(SocketAddress addr, String pseudo) {
+        return connectedUsers.put(addr, pseudo);
+    }
+
+    private String unregisterUser(SocketAddress addr) {
+        return connectedUsers.remove(addr);
+    }
+
+    private boolean isUserConnected(SocketAddress addr) {
+        return connectedUsers.containsKey(addr);
+    }
+
+    private String getUserPseudo(SocketAddress addr) {
+        return connectedUsers.get(addr);
     }
 
     /**
