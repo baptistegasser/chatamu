@@ -7,7 +7,7 @@ import java.nio.channels.SocketChannel;
 public class ChatamuSocketChannel {
     private final SocketChannel channel;
 
-    public ChatamuSocketChannel(SocketChannel channel) {
+    private ChatamuSocketChannel(SocketChannel channel) {
         this.channel = channel;
     }
 
@@ -15,26 +15,17 @@ public class ChatamuSocketChannel {
         return new ChatamuSocketChannel(channel);
     }
 
-    public int login(String pseudo) throws IOException {
-        final String msg = ChatamuProtocol.OP.LOGIN + " " + pseudo;
-        return write(ByteBuffer.wrap(msg.getBytes()));
+    public int sendLoginError() throws IOException {
+        return writeMessage(ChatamuProtocol.Error.ERROR_LOGIN);
     }
 
-    public int sendMessage(String message) throws IOException {
-        final String msg = ChatamuProtocol.OP.MESSAGE + " " + message;
-        return write(ByteBuffer.wrap(msg.getBytes()));
+    public int sendMessageError() throws IOException {
+        return writeMessage(ChatamuProtocol.Error.ERROR_MESSAGE);
     }
 
-    public int sendLoginError(String pseudo) throws IOException {
-        final String msg = ChatamuProtocol.OP.ERROR_LOGIN + " aborting ChatAMU protocol.";
-        return write(ByteBuffer.wrap(msg.getBytes()));
+    public int writeMessage(String content) throws IOException {
+        return write(ByteBuffer.wrap(content.getBytes()));
     }
-
-    public int sendMessageError(String message) throws IOException {
-        final String msg = ChatamuProtocol.OP.ERROR_MESSAGE + " ChatAMU.";
-        return write(ByteBuffer.wrap(msg.getBytes()));
-    }
-
 
     public int read(ByteBuffer byteBuffer) throws IOException {
         return channel.read(byteBuffer);
