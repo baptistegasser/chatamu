@@ -9,38 +9,60 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
+/**
+ * The server implementing the chatamu protocol
+ */
 public class Server {
     private Selector selector;
-    private ServerSocketChannel servSocket;
+    private ServerSocketChannel serverSocket;
     private InetSocketAddress socketAddress;
 
+    /**
+     * Initialize the server.
+     * @param address The address to bind on.
+     * @param port The port to bind on.
+     * @throws IOException Creation of sockets may fail.
+     */
     public Server(String address, int port) throws IOException {
+        // Create a selector
         selector = Selector.open();
 
-        servSocket = ServerSocketChannel.open();
-        servSocket.configureBlocking(false);
-        servSocket.register(selector, SelectionKey.OP_ACCEPT);
+        // Configure the server socket
+        serverSocket = ServerSocketChannel.open();
+        serverSocket.configureBlocking(false);
+        serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
+        // Store the address and port to bind to the socket later
         socketAddress = new InetSocketAddress(address, port);
     }
 
+    /**
+     * Launch the infinite server loop.
+     * @throws IOException Operations on channel and socket may fail.
+     * TODO remove global throws, one client might fail the whole server !!!
+     */
     public void start() throws IOException {
-        // If problem bind in the constructor
-        servSocket.bind(this.socketAddress);
+        // Bind the socket to the address now.
+        serverSocket.bind(this.socketAddress);
 
+        // Infinite server loop
         while (true) {
             selector.select();
 
+            // Iterate on the selected keys
             Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
             while (keyIterator.hasNext()) {
                 SelectionKey key = keyIterator.next();
 
+                // New connection
                 if (key.isAcceptable()) {
-                    SocketChannel client = servSocket.accept();
+                    SocketChannel client = serverSocket.accept();
                     client.configureBlocking(false);
                     client.register(selector, SelectionKey.OP_READ);
 
-                } else if (key.isReadable()) {
+                }
+                // Packet received
+                else if (key.isReadable()) {
                     SocketChannel client = (SocketChannel) key.channel();
 
                     ByteBuffer recvBuf = ByteBuffer.allocate(256);
@@ -65,19 +87,27 @@ public class Server {
                     }
                 }
             }
+
+            // Remove the iterated keys
             keyIterator.remove();
         }
     }
 
+    /**
+     * Clean the server.
+     */
     public void close() throws IOException {
-        if (servSocket.isOpen()) {
-            servSocket.close();
+        if (serverSocket.isOpen()) {
+            serverSocket.close();
         }
         if (selector.isOpen()) {
             selector.close();
         }
     }
 
+    /**
+     * Launch a chatamu server instance
+     */
     public static void main(String[] args) {
         try {
             Server server = new Server("localhost", ChatamuProtocol.DEFAULT_PORT);
