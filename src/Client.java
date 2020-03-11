@@ -90,6 +90,8 @@ public class Client {
             String messageRecv;
             while(true) {
                 try {
+                    // TODO Il faut gérer le cas où il y a un probleme ici mais que le client peux enncore envoyer des  messages
+                    // TODO Voir s'il faut pas copier le socket dans le constructeur de HandlerReceived
                     // Lecture des messages du serveur
                     byte[] serverBuffer = new byte[256];
                     socket.getInputStream().read(serverBuffer);
