@@ -36,19 +36,11 @@ public class Client {
             // Envoi du pseudo
             byte[] clientBuffer = new byte[256];
             System.in.read(clientBuffer);
-            String reponse = new String(clientBuffer).trim();
-            out.write(ChatamuProtocol.PREFIX_LOGIN + reponse);
-            out.flush();
-            System.out.println("Waiting for server ...");
+            String pseudo = new String(clientBuffer).trim();
 
-            while(true) {
-                // Lecture de la reponse du serveur
-                byte[] serverBuffer = new byte[256];
-                socket.getInputStream().read(serverBuffer);
-                reponse = new String(serverBuffer).trim();
-                if(reponse.equals(ChatamuProtocol.Error.ERROR_LOGIN)) throw new IOException("Error while connecting");
-                else if (reponse.equals(ChatamuProtocol.LOGIN_SUCCESS)) break;
-            }
+            boolean succes = login(pseudo);
+            if(!succes) throw new IOException("Failed to login !");
+
             // Thread pour la lecture des messages
             new Thread(new HandlerReceived()).start();
             communication();
