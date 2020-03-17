@@ -119,21 +119,28 @@ public class Client {
     class HandlerReceived implements Runnable {
 
         public void run () {
-            String messageRecv;
-            while(true) {
-                try {
-                    // TODO Il faut gérer le cas où il y a un probleme ici mais que le client peux enncore envoyer des  messages
-                    // TODO Voir s'il faut pas copier le socket dans le constructeur de HandlerReceived
-                    // Lecture des messages du serveur
-                    byte[] serverBuffer = new byte[256];
-                    socket.getInputStream().read(serverBuffer);
-                    messageRecv = new String(serverBuffer).trim();
-                    System.out.println(messageRecv);
-                    if(messageRecv.equals(ChatamuProtocol.Error.ERROR_MESSAGE))  throw new IOException("Error while sending message.");
-                } catch (IOException e) {
-                    System.out.println("Bye !");
-                    break;
+            String response;
+
+            try {
+                while (true) {
+                    // Read a message from the server, if nothing was read, sleep 100ms
+                    byte[] buf = new byte[256];
+                    if (inputStream.read(buf) > 0) {
+                        response = new String(buf).trim();
+
+                        // Verify the response is not an error
+                        if (response.equals(ChatamuProtocol.Error.ERROR_MESSAGE)) {
+                            throw new IOException("Error while sending message.");
+                        } else {
+                            System.out.println(response);
+                        }
+                    } else {
+                        Thread.sleep(100);
+                    }
                 }
+            } catch (IOException | InterruptedException e) {
+                System.out.println("Handler failed, see stack trace below:");
+                e.printStackTrace();
             }
         }
 
