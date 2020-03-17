@@ -2,6 +2,7 @@ package protocol;
 
 public final class ChatamuProtocol {
     public static final int DEFAULT_PORT = 12345;
+    public static final int BUFFER_SIZE = 256;
 
     public static final class Error {
         public static final String ERROR_LOGIN     = "ERROR LOGIN aborting chatamu protocol.";
