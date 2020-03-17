@@ -27,7 +27,7 @@ public class Client {
         return resp.equals(ChatamuProtocol.LOGIN_SUCCESS);
     }
 
-    private boolean logout() throws IOException {
+    private void logout() throws IOException {
         out.write(ChatamuProtocol.LOGOUT_MESSAGE);//TODO remove horror
         out.flush();
     }
