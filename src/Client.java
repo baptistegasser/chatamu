@@ -4,13 +4,10 @@ import java.net.Socket;
 import protocol.*;
 
 public class Client {
-
-    final int port;
     private Socket socket;
     private BufferedWriter out;
 
-    public Client(String adress) throws IOException {
-        port = ChatamuProtocol.DEFAULT_PORT;
+    public Client(String adress, int port) throws IOException {
         socket = new Socket(adress, port);
         out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
     }
@@ -87,14 +84,34 @@ public class Client {
     }
 
     public static void main(String[] args) {
-        String adress = "localhost";
-        System.out.println("Connecting to localhost " + adress + ", port  " + ChatamuProtocol.DEFAULT_PORT );
-            try {
-                Client client = new Client(adress);
-                client.launch();
-            } catch (Exception e) {
-                e.printStackTrace();
+        int port = ChatamuProtocol.DEFAULT_PORT;
+        final String adress = "localhost";
+
+        if (args.length >= 2) {
+            if (args[0].equals("--port")) {
+                try {
+                    port = Integer.parseInt(args[1]);
+                } catch (NumberFormatException e) {
+                    showUsage();
+                    System.exit(-1);
+                }
             }
+        }
+
+        System.out.printf("Connecting to ChatAMU server at %s:%s%n", adress, port);
+        try {
+            Client client = new Client(adress, port);
+            client.launch();
+        } catch (Exception e) {
+            System.err.println("Unexpected client failure, see stack trace below:");
+            e.printStackTrace();
+        }
+    }
+
+    private static void showUsage() {
+        System.out.println("Correct usage of this client:");
+        System.out.println("java Client [--port n]");
+        System.out.printf("--port: n specify the target port, default to %d%n", ChatamuProtocol.DEFAULT_PORT);
     }
 
     class HandlerReceived implements Runnable {
