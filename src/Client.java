@@ -1,109 +1,171 @@
+import protocol.ChatamuProtocol;
+
 import java.io.*;
 import java.net.Socket;
-
-import protocol.*;
+import java.util.Scanner;
 
 public class Client {
+    private final Socket socket;
+    private final InputStream inputStream;
+    private final OutputStream outputStream;
 
-    final int port;
-    private Socket socket;
-    private BufferedWriter out;
-
-    public Client(String adress) throws IOException {
-        port = ChatamuProtocol.DEFAULT_PORT;
-        socket = new Socket(adress, port);
-        out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+    public Client(String address, int port) throws IOException {
+        this.socket = new Socket(address, port);
+        this.inputStream = this.socket.getInputStream();
+        this.outputStream = this.socket.getOutputStream();
     }
 
-    public void launch()  {
-        try {
+    /**
+     * Send a valid chatamu login message
+     * @param pseudo The pseudo to use in the chat
+     */
+    private boolean login(String pseudo) throws IOException {
+        final byte[] msg = (ChatamuProtocol.PREFIX_LOGIN + pseudo.trim()).getBytes();
+        outputStream.write(msg);
+        outputStream.flush();
 
-            System.out.println("Hello. Please connect.");
-            System.out.println("Enter your name : ");
+        byte[] buf = new byte[ChatamuProtocol.BUFFER_SIZE];
+        int size = inputStream.read(buf);
 
-            // Envoi du pseudo
-            byte[] clientBuffer = new byte[256];
-            System.in.read(clientBuffer);
-            String reponse = new String(clientBuffer).trim();
-            out.write(ChatamuProtocol.PREFIX_LOGIN + reponse);
-            out.flush();
-            System.out.println("Waiting for server ...");
+        final String resp = new String(buf).trim();
+        return resp.equals(ChatamuProtocol.LOGIN_SUCCESS);
+    }
 
-            while(true) {
-                // Lecture de la reponse du serveur
-                byte[] serverBuffer = new byte[256];
-                socket.getInputStream().read(serverBuffer);
-                reponse = new String(serverBuffer).trim();
-                if(reponse.equals(ChatamuProtocol.Error.ERROR_LOGIN)) throw new IOException("Error while connecting");
-                else if (reponse.equals(ChatamuProtocol.LOGIN_SUCCESS)) break;
-            }
-            // Thread pour la lecture des messages
-            new Thread(new HandlerReceived()).start();
-            communication();
-            closeAll();
+    /**
+     * Send a valid chatamu logout message
+     */
+    private void logout() throws IOException {
+        outputStream.write(ChatamuProtocol.LOGOUT_MESSAGE.getBytes());
+    }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+    /**
+     * Send a valid chatamu message
+     * @param content The content of the message
+     */
+    private void sendMessage(String content) throws IOException {
+        final byte[] msg = (ChatamuProtocol.PREFIX_MESSAGE + content.trim()).getBytes();
+        outputStream.write(msg);
+        outputStream.flush();
+    }
+
+    public void launch() throws IOException {
+        final Scanner scanner = new Scanner(System.in);
+
+        System.out.println("Hello. Please connect.");
+        System.out.print("Enter your name : ");
+
+        // Read the user pseudo and logging
+        boolean success = login(scanner.next().trim());
+        if (success) {
+            System.out.println("You're now connected and you can start tchating !");
+        } else {
+            throw new IOException("Failed to login !");
         }
-    }
 
-    public void communication()  {
-        System.out.println("You're now connected and you can start tchating !");
+        // Start the server response handler.
+        new Thread(new HandlerReceived()).start();
+
+        // Loop while user have message to send
         String message;
         while (true) {
-            try {
-                // Envoi de messages
-                byte[] clientBuffer = new byte[256];
-                System.in.read(clientBuffer);
-                message = new String(clientBuffer).trim();
-                if(message.equals("quit") || message.equals("QUIT")) {
-                    out.write(ChatamuProtocol.LOGOUT_MESSAGE);
-                    out.flush();
-                    break;
-                }
-                out.write(ChatamuProtocol.PREFIX_MESSAGE + message);
-                out.flush();
-            }  catch (Exception e) {
-                e.printStackTrace();
+            message = scanner.next().trim();
+            if (message.toLowerCase().equals("quit")) {
+                break;
+            } else {
+                sendMessage(message);
             }
         }
-    }
-    public void closeAll() throws IOException {
-        socket.close();
-        out.close();
+
+        // Logout from server
+        logout();
     }
 
-    public static void main(String[] args) {
-        String adress = "localhost";
-        System.out.println("Connecting to localhost " + adress + ", port  " + ChatamuProtocol.DEFAULT_PORT );
-            try {
-                Client client = new Client(adress);
-                client.launch();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    /**
+     * Close the open socket, streams...
+     */
+    public void closeAll() {
+        try {
+            if (!socket.isClosed()) socket.close();
+        } catch (IOException e) {
+            // Ignore the exception when closing
+        }
     }
 
+    /**
+     * Handler charged of reading the message sent by the server
+     */
     class HandlerReceived implements Runnable {
-
         public void run () {
-            String messageRecv;
-            while(true) {
+            try {
+                handle();
+            } catch (Exception e) {
+                System.out.println("Handler failed, see stack trace below:");
+                e.printStackTrace();
+            }
+        }
+
+        private void handle() throws Exception {
+            String response;
+            while (true) {
+                // Read a message from the server, if nothing was read, sleep 100ms
+                byte[] buf= new byte[256];
+                if (inputStream.read(buf) > 0) {
+                    response = new String(buf).trim();
+
+                    // Verify the response is not an error
+                    if (response.equals(ChatamuProtocol.Error.ERROR_MESSAGE)) {
+                        throw new IOException("Error while sending message.");
+                    } else {
+                        System.out.println(response);
+                    }
+                } else {
+                    Thread.sleep(100);
+                }
+            }
+        }
+    }
+
+    /**
+     * Create a new client and start it
+     * @param args Optional arguments
+     */
+    public static void main(String[] args) {
+        // Default value for the client connection
+        int port = ChatamuProtocol.DEFAULT_PORT;
+        final String adress = "localhost";
+
+        // Parse arguments if any
+        if (args.length >= 2) {
+            if (args[0].equals("--port")) {
                 try {
-                    // TODO Il faut gérer le cas où il y a un probleme ici mais que le client peux enncore envoyer des  messages
-                    // TODO Voir s'il faut pas copier le socket dans le constructeur de HandlerReceived
-                    // Lecture des messages du serveur
-                    byte[] serverBuffer = new byte[256];
-                    socket.getInputStream().read(serverBuffer);
-                    messageRecv = new String(serverBuffer).trim();
-                    System.out.println(messageRecv);
-                    if(messageRecv.equals(ChatamuProtocol.Error.ERROR_MESSAGE))  throw new IOException("Error while sending message.");
-                } catch (IOException e) {
-                    System.out.println("Bye !");
-                    break;
+                    port = Integer.parseInt(args[1]);
+                } catch (NumberFormatException e) {
+                    showUsage();
+                    System.exit(-1);
                 }
             }
         }
 
+        // Start the client and handle error
+        Client client = null;
+        try {
+            client = new Client(adress, port);
+            client.launch();
+        } catch (Exception e) {
+            System.err.println("Unexpected client failure, see stack trace below:");
+            e.printStackTrace();
+        } finally {
+            // Clean all
+            if (client != null) client.closeAll();
+        }
+    }
+
+    /**
+     * Show how to use this program
+     */
+    private static void showUsage() {
+        System.out.println("Correct usage of this client:");
+        System.out.println("java Client [--port n]");
+        System.out.printf("--port: n specify the target port, default to %d%n", ChatamuProtocol.DEFAULT_PORT);
     }
 }
