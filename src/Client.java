@@ -1,7 +1,9 @@
-import java.io.*;
-import java.net.Socket;
+import protocol.ChatamuProtocol;
 
-import protocol.*;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.net.Socket;
 
 public class Client {
     private Socket socket;
