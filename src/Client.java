@@ -27,6 +27,11 @@ public class Client {
         return resp.equals(ChatamuProtocol.LOGIN_SUCCESS);
     }
 
+    private boolean logout() throws IOException {
+        out.write(ChatamuProtocol.LOGOUT_MESSAGE);//TODO remove horror
+        out.flush();
+    }
+
     private void sendMessage(String content) throws IOException {
         final byte[] msg = (ChatamuProtocol.PREFIX_MESSAGE + content.trim()).getBytes();
         out.write(new String(msg));//TODO remove horror
@@ -66,9 +71,8 @@ public class Client {
                 byte[] clientBuffer = new byte[256];
                 System.in.read(clientBuffer);
                 message = new String(clientBuffer).trim();
-                if(message.equals("quit") || message.equals("QUIT")) {
-                    out.write(ChatamuProtocol.LOGOUT_MESSAGE);
-                    out.flush();
+                if(message.toLowerCase().equals("quit")) {
+                    logout();
                     break;
                 }
                 sendMessage(message);
