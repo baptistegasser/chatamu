@@ -1,40 +1,39 @@
 import protocol.ChatamuProtocol;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.net.Socket;
 
 public class Client {
     private Socket socket;
-    private BufferedWriter out;
+    private InputStream inputStream;
+    private OutputStream outputStream;
 
     public Client(String adress, int port) throws IOException {
         socket = new Socket(adress, port);
-        out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+        this.inputStream = socket.getInputStream();
+        this.outputStream = socket.getOutputStream();
     }
 
     private boolean login(String pseudo) throws IOException {
         final byte[] msg = (ChatamuProtocol.PREFIX_LOGIN + pseudo.trim()).getBytes();
-        out.write(new String(msg));//TODO remove horror
-        out.flush();
+        outputStream.write(msg);
+        outputStream.flush();
 
         byte[] buf = new byte[ChatamuProtocol.BUFFER_SIZE];
-        socket.getInputStream().read(buf);
+        inputStream.read(buf);
 
         final String resp = new String(buf).trim();
         return resp.equals(ChatamuProtocol.LOGIN_SUCCESS);
     }
 
     private void logout() throws IOException {
-        out.write(ChatamuProtocol.LOGOUT_MESSAGE);//TODO remove horror
-        out.flush();
+        outputStream.write(ChatamuProtocol.LOGOUT_MESSAGE.getBytes());
     }
 
     private void sendMessage(String content) throws IOException {
         final byte[] msg = (ChatamuProtocol.PREFIX_MESSAGE + content.trim()).getBytes();
-        out.write(new String(msg));//TODO remove horror
-        out.flush();
+        outputStream.write(msg);
+        outputStream.flush();
     }
 
     public void launch()  {
@@ -82,7 +81,8 @@ public class Client {
     }
     public void closeAll() throws IOException {
         socket.close();
-        out.close();
+        outputStream.close();
+        inputStream.close();
     }
 
     public static void main(String[] args) {
