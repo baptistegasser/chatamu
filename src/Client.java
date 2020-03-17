@@ -15,6 +15,18 @@ public class Client {
         out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
     }
 
+    private boolean login(String pseudo) throws IOException {
+        final byte[] msg = (ChatamuProtocol.PREFIX_LOGIN + pseudo.trim()).getBytes();
+        out.write(new String(msg));//TODO remove horror
+        out.flush();
+
+        byte[] buf = new byte[ChatamuProtocol.BUFFER_SIZE];
+        socket.getInputStream().read(buf);
+
+        final String resp = new String(buf).trim();
+        return resp.equals(ChatamuProtocol.LOGIN_SUCCESS);
+    }
+
     public void launch()  {
         try {
 
