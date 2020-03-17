@@ -24,7 +24,7 @@ public class Client {
             // Envoi du pseudo
             byte[] clientBuffer = new byte[256];
             System.in.read(clientBuffer);
-            String reponse = new String(clientBuffer);
+            String reponse = new String(clientBuffer).trim();
             out.write(ChatamuProtocol.PREFIX_LOGIN + reponse);
             out.flush();
             System.out.println("Waiting for server ...");
