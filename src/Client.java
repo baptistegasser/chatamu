@@ -2,17 +2,28 @@ import protocol.ChatamuProtocol;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Scanner;
 
 public class Client {
     private final Socket socket;
     private final InputStream inputStream;
     private final OutputStream outputStream;
+    private boolean loggedIn;
 
     public Client(String address, int port) throws IOException {
         this.socket = new Socket(address, port);
         this.inputStream = this.socket.getInputStream();
         this.outputStream = this.socket.getOutputStream();
+        this.setLoggedIn(false);
+    }
+
+    public synchronized void setLoggedIn(boolean loggedIn) {
+        this.loggedIn = loggedIn;
+    }
+
+    public synchronized boolean isLoggedIn() {
+        return loggedIn;
     }
 
     /**
@@ -58,6 +69,7 @@ public class Client {
         boolean success = login(scanner.next().trim());
         if (success) {
             System.out.println("You're now connected and you can start tchating !");
+            this.setLoggedIn(true);
         } else {
             throw new IOException("Failed to login !");
         }
@@ -78,6 +90,7 @@ public class Client {
 
         // Logout from server
         logout();
+        this.setLoggedIn(false);
     }
 
     /**
@@ -104,22 +117,34 @@ public class Client {
             }
         }
 
-        private void handle() throws Exception {
+        private void handle() throws IOException {
             String response;
             while (true) {
                 // Read a message from the server, if nothing was read, sleep 100ms
                 byte[] buf= new byte[256];
-                if (inputStream.read(buf) > 0) {
+
+                // Read from inputStream and handle case where the socket might close
+                int size = 0;
+                try {
+                    size = inputStream.read(buf);
+                } catch (SocketException e) {
+                    if (!isLoggedIn()) {
+                        break;
+                    } else {
+                        System.err.println("Socket was unexpectedly closed !");
+                    }
+                }
+
+                // If we read something only
+                if (size > 0) {
                     response = new String(buf).trim();
 
                     // Verify the response is not an error
                     if (response.equals(ChatamuProtocol.Error.ERROR_MESSAGE)) {
-                        throw new IOException("Error while sending message.");
+                        System.out.println("An invalid message was sent !");
                     } else {
                         System.out.println(response);
                     }
-                } else {
-                    Thread.sleep(100);
                 }
             }
         }
