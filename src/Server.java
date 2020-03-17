@@ -119,11 +119,14 @@ public class Server {
             {
                 if (isUserConnected(client_addr)) {
                     unregisterUser(client_addr);
+                    client.close();
                 } else {
                     client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
                 }
             }
             else {
+                if (!isUserConnected(client_addr)) return;
+
                 System.err.println("Invalid message for protocol chatamu");
                 System.err.println("Got: '" + msg + "'");
                 // Send error message, if fail close the client
