@@ -8,6 +8,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -19,6 +20,7 @@ public class Server {
     private ServerSocketChannel serverSocket;
     private InetSocketAddress socketAddress;
     private HashMap<SocketAddress, String> connectedUsers = new HashMap<>();
+    private ArrayList<SocketChannel> clientsConnected = new ArrayList<>();
 
     /**
      * Initialize the server.
@@ -76,6 +78,7 @@ public class Server {
     private void handleAcceptable(SelectionKey key) {
         try {
             SocketChannel client = serverSocket.accept();
+            clientsConnected.add(client);
 
             client.configureBlocking(false);
             client.register(selector, SelectionKey.OP_READ);
@@ -110,7 +113,11 @@ public class Server {
                 if (isUserConnected(client_addr)) {
                     final String content = msg.replace(ChatamuProtocol.PREFIX_MESSAGE, "");
                     final String pseudo = getUserPseudo(client_addr);
-                    System.out.println(pseudo + "> " + content);
+                    String msgToSend = pseudo + "> " + content;
+                    for(SocketChannel sa : clientsConnected) {
+                        if(sa.getRemoteAddress() == client.getRemoteAddress()) continue;
+                        sa.write(ByteBuffer.wrap(msgToSend.getBytes()));
+                    }
                 } else {
                     client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
                 }
