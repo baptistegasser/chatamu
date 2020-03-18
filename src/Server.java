@@ -114,6 +114,8 @@ public class Server {
                     final String content = msg.replace(ChatamuProtocol.PREFIX_MESSAGE, "");
                     final String pseudo = getUserPseudo(client_addr);
                     String msgToSend = pseudo + "> " + content;
+                    System.out.println(msgToSend);
+                    // Sending message to everyonee
                     for(SocketChannel sa : clientsConnected) {
                         if(sa.getRemoteAddress() == client.getRemoteAddress()) continue;
                         sa.write(ByteBuffer.wrap(msgToSend.getBytes()));
