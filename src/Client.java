@@ -66,7 +66,7 @@ public class Client {
         System.out.print("Enter your name : ");
 
         // Read the user pseudo and logging
-        boolean success = login(scanner.next().trim());
+        boolean success = login(scanner.nextLine().trim());
         if (success) {
             System.out.println("You're now connected and you can start tchating !");
             this.setLoggedIn(true);
@@ -80,7 +80,7 @@ public class Client {
         // Loop while user have message to send
         String message;
         while (true) {
-            message = scanner.next().trim();
+            message = scanner.nextLine().trim();
             if (message.toLowerCase().equals("quit")) {
                 break;
             } else {
