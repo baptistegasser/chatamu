@@ -185,6 +185,7 @@ public class Server {
     public static void main(String[] args) {
         try {
             Server server = new Server("localhost", ChatamuProtocol.DEFAULT_PORT);
+            System.out.println("Le serveur est lancé sur le port " + ChatamuProtocol.DEFAULT_PORT);
             server.start();
             server.close();
         } catch (IOException ioe) {
