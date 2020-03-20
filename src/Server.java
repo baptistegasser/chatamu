@@ -128,6 +128,7 @@ public class Server {
             {
                 if (isUserConnected(client_addr)) {
                     unregisterUser(client_addr);
+                    clientsConnected.remove(client);
                     client.close();
                 } else {
                     client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
