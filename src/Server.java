@@ -78,7 +78,6 @@ public class Server {
     private void handleAcceptable(SelectionKey key) {
         try {
             SocketChannel client = serverSocket.accept();
-            clientsConnected.add(client);
 
             client.configureBlocking(false);
             client.register(selector, SelectionKey.OP_READ);
@@ -101,7 +100,7 @@ public class Server {
             if (msg.startsWith(ChatamuProtocol.PREFIX_LOGIN)) {
                 final String pseudo = msg.replace(ChatamuProtocol.PREFIX_LOGIN, "");
                 if (!isUserConnected(client_addr)) {
-                    registerUser(client_addr, pseudo);
+                    registerUser(client, pseudo);
                     client.write(ByteBuffer.wrap(ChatamuProtocol.LOGIN_SUCCESS.getBytes()));
                     System.out.println(pseudo + " connected !");
                 } else {
@@ -127,8 +126,7 @@ public class Server {
             else if (msg.equals(ChatamuProtocol.LOGOUT_MESSAGE))
             {
                 if (isUserConnected(client_addr)) {
-                    unregisterUser(client_addr);
-                    clientsConnected.remove(client);
+                    unregisterUser(client);
                     client.close();
                 } else {
                     client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
@@ -137,17 +135,16 @@ public class Server {
             else {
                 if (!isUserConnected(client_addr)) return;
 
-                System.err.println("Invalid message for protocol chatamu");
-                System.err.println("Got: '" + msg + "'");
                 // Send error message, if fail close the client
                 try {
                     client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_MESSAGE.getBytes()));
                 } catch (IOException ioe) {
+                    unregisterUser(client);
                     client.close();
                 }
             }
         } catch (IOException ioe) {
-            System.err.println("Failed to handle read operation of a client.");
+            System.err.println("Failed to handle i/o operation of a client.");
             ioe.printStackTrace();
         }
     }
@@ -164,12 +161,14 @@ public class Server {
         }
     }
 
-    private String registerUser(SocketAddress addr, String pseudo) {
-        return connectedUsers.put(addr, pseudo);
+    private String registerUser(SocketChannel client, String pseudo) throws IOException {
+        clientsConnected.add(client);
+        return connectedUsers.put(client.getRemoteAddress(), pseudo);
     }
 
-    private String unregisterUser(SocketAddress addr) {
-        return connectedUsers.remove(addr);
+    private String unregisterUser(SocketChannel client) throws IOException {
+        clientsConnected.remove(client);
+        return connectedUsers.remove(client.getRemoteAddress());
     }
 
     private boolean isUserConnected(SocketAddress addr) {
