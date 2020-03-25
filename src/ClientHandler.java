@@ -31,18 +31,6 @@ public class ClientHandler {
         return clientPseudoMap.get(client_addr);
     }
 
-    private void broadcastMessageFrom(String message, SocketChannel sender) {
-        for (SocketChannel remoteClient : connectedClientsSocket) {
-            if (remoteClient == sender) continue;
-
-            try {
-                remoteClient.write(ByteBuffer.wrap(message.getBytes()));
-            } catch (IOException ioe) {
-                System.err.println("Failed sending broadcast message for client " + remoteClient);
-            }
-        }
-    }
-
     public void handleRead (SelectionKey key) {
         new ReadHandler((SocketChannel) key.channel()).handle();
     }
@@ -77,6 +65,19 @@ public class ClientHandler {
                 throw new ServerException(ServerException.Error.USER_NOT_CONNECTED);
             } catch (IOException ioe) {
                 throw new ServerException(ServerException.Error.USER_NOT_CONNECTED, ioe);
+            }
+        }
+
+        private void broadcastMessage(String message) {
+            for (SocketChannel remoteClient : connectedClientsSocket) {
+                // Don't send to current client
+                if (remoteClient == client) continue;
+
+                try {
+                    remoteClient.write(ByteBuffer.wrap(message.getBytes()));
+                } catch (IOException ioe) {
+                    System.err.println("Failed sending broadcast message for client " + remoteClient);
+                }
             }
         }
 
@@ -123,7 +124,7 @@ public class ClientHandler {
 
             // Broadcast to other client that an user connected
             final String msg = pseudo + " connected !";
-            broadcastMessageFrom(msg, client);
+            broadcastMessage(msg);
 
             System.out.println(pseudo + " connected !"); // TODO better server output ?
         }
@@ -134,7 +135,7 @@ public class ClientHandler {
         private void handleLogout() throws IOException {
             // Broadcast to other client that an user disconnected
             final String msg = this.client_pseudo + " disconnected !";
-            broadcastMessageFrom(msg, client);
+            broadcastMessage(msg);
             // Unregister the client from connected lists
             disconnectClient(client);
             // Close the socket
@@ -149,7 +150,7 @@ public class ClientHandler {
 
             // Sending message to everyone
             final String msg = this.client_pseudo + "> " + content;
-            broadcastMessageFrom(msg, client);
+            broadcastMessage(msg);
 
             System.out.println(msg); // TODO better server output ?
         }
