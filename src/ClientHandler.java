@@ -84,12 +84,18 @@ public class ClientHandler {
         public void handle() {
             try {
                 // Read the from the socket channel
-                ByteBuffer recvBuf = ByteBuffer.allocate(256);
+                ByteBuffer recvBuf = ByteBuffer.allocate(ChatamuProtocol.BUFFER_SIZE);
                 client.read(recvBuf);
                 client_instr = new String(recvBuf.array()).trim();
 
+
+                final String[] split = client_instr.split(" ", 2);
+                final String prefix = split[0];
+                final String content = split[1];
+
                 // First instruction to check: Client trying to loging
-                if (client_instr.startsWith(ChatamuProtocol.PREFIX_LOGIN)) {
+                if (prefix.equals(ChatamuProtocol.PREFIX_LOGIN)) {
+                    this.client_pseudo = content;
                     handleLogin();
                 } else {
                     // Other action should be sure that the user is connected
@@ -98,9 +104,9 @@ public class ClientHandler {
                     // As we are connected, retrieve the pseudo
                     this.client_pseudo = getClientPseudo(client_addr);
 
-                    if (client_instr.equals(ChatamuProtocol.LOGOUT_MESSAGE)) {
+                    if (prefix.equals(ChatamuProtocol.LOGOUT_MESSAGE)) {
                         handleLogout();
-                    } else if (client_instr.startsWith(ChatamuProtocol.PREFIX_MESSAGE)) {
+                    } else if (prefix.equals(ChatamuProtocol.PREFIX_MESSAGE)) {
                         handleMessage();
                     } else {
                         handleUnknownInstr();
@@ -115,18 +121,16 @@ public class ClientHandler {
          * Handling a client logging in.
          */
         private void handleLogin() throws IOException {
-            final String pseudo = client_instr.substring(client_instr.indexOf(" ")+1);
-
             // Register the client as connected
-            connectClient(client, pseudo);
+            connectClient(client, this.client_pseudo);
             // Send a success to the client
             client.write(ByteBuffer.wrap(ChatamuProtocol.LOGIN_SUCCESS.getBytes()));
 
             // Broadcast to other client that an user connected
-            final String msg = pseudo + " connected !";
+            final String msg = ChatamuProtocol.prefixContent(ChatamuProtocol.PREFIX_USER_CONNECTED, this.client_pseudo);
             broadcastMessage(msg);
 
-            System.out.println(pseudo + " connected !"); // TODO better server output ?
+            System.out.println(this.client_pseudo + " connected !"); // TODO better server output ?
         }
 
         /**
@@ -134,12 +138,14 @@ public class ClientHandler {
          */
         private void handleLogout() throws IOException {
             // Broadcast to other client that an user disconnected
-            final String msg = this.client_pseudo + " disconnected !";
+            final String msg = ChatamuProtocol.prefixContent(ChatamuProtocol.PREFIX_USER_DISCONNECTED, this.client_pseudo);
             broadcastMessage(msg);
             // Unregister the client from connected lists
             disconnectClient(client);
             // Close the socket
             client.close();
+
+            System.out.println(this.client_pseudo + " disconnected !"); // TODO better server output ?
         }
 
         /**
@@ -163,9 +169,8 @@ public class ClientHandler {
                 // Try to send an error message
                 client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_MESSAGE.getBytes()));
             } catch (IOException ioe) {
-                // If it fail consider the client as dead, disconnect and close socket
-                disconnectClient(client);
-                client.close();
+                // If it fail consider the client as dead and logout
+                handleLogout();
             }
         }
     }

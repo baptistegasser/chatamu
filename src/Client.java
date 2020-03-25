@@ -31,8 +31,8 @@ public class Client {
      * @param pseudo The pseudo to use in the chat
      */
     private boolean login(String pseudo) throws IOException {
-        final byte[] msg = (ChatamuProtocol.PREFIX_LOGIN + pseudo.trim()).getBytes();
-        outputStream.write(msg);
+        final String msg = ChatamuProtocol.prefixContent(ChatamuProtocol.PREFIX_LOGIN, pseudo.trim());
+        outputStream.write(msg.getBytes());
         outputStream.flush();
 
         byte[] buf = new byte[ChatamuProtocol.BUFFER_SIZE];
@@ -54,8 +54,8 @@ public class Client {
      * @param content The content of the message
      */
     private void sendMessage(String content) throws IOException {
-        final byte[] msg = (ChatamuProtocol.PREFIX_MESSAGE + content.trim()).getBytes();
-        outputStream.write(msg);
+        final String msg = ChatamuProtocol.prefixContent(ChatamuProtocol.PREFIX_MESSAGE, content.trim());
+        outputStream.write(msg.getBytes());
         outputStream.flush();
     }
 
@@ -121,7 +121,7 @@ public class Client {
             String response;
             while (true) {
                 // Read a message from the server, if nothing was read, sleep 100ms
-                byte[] buf= new byte[256];
+                byte[] buf= new byte[ChatamuProtocol.BUFFER_SIZE];
 
                 // Read from inputStream and handle case where the socket might close
                 int size = 0;
@@ -143,7 +143,20 @@ public class Client {
                     if (response.equals(ChatamuProtocol.Error.ERROR_MESSAGE)) {
                         System.out.println("An invalid message was sent !");
                     } else {
-                        System.out.println(response);
+                        final String[] split = response.split(" ", 2);
+                        final String prefix = split[0];
+                        final String content = split[1];
+
+                        switch (prefix) {
+                            case ChatamuProtocol.PREFIX_USER_CONNECTED:
+                                System.out.printf("User '%s' joined !%n", content);
+                                break;
+                            case ChatamuProtocol.PREFIX_USER_DISCONNECTED:
+                                System.out.printf("Oh no, user '%s' left !%n", content);
+                                break;
+                            default:
+                                System.out.println(response);
+                        }
                     }
                 }
             }
