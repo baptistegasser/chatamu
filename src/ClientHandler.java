@@ -8,8 +8,6 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class ClientHandler {
     private Queue<SocketChannel> connectedClientsSocket = new ConcurrentLinkedQueue<>();
@@ -51,9 +49,9 @@ public class ClientHandler {
 
     private class ReadHandler {
         private final SocketChannel client;
-        private SocketAddress client_addr;
+        private final SocketAddress client_addr;
         private String client_instr;
-        private final Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+        private String client_pseudo;
 
         public ReadHandler(SocketChannel socket) throws ServerException {
             try {
@@ -89,14 +87,15 @@ public class ClientHandler {
                 client.read(recvBuf);
                 client_instr = new String(recvBuf.array()).trim();
 
-                LOGGER.log(Level.INFO, "Client at " + client_addr + " sent: '" + client_instr + "'");
-
                 // First instruction to check: Client trying to loging
                 if (client_instr.startsWith(ChatamuProtocol.PREFIX_LOGIN)) {
                     handleLogin();
                 } else {
                     // Other action should be sure that the user is connected
                     assertIsConnected(client);
+
+                    // As we are connected, retrieve the pseudo
+                    this.client_pseudo = getClientPseudo(client_addr);
 
                     if (client_instr.equals(ChatamuProtocol.LOGOUT_MESSAGE)) {
                         handleLogout();
@@ -111,34 +110,59 @@ public class ClientHandler {
             }
         }
 
+        /**
+         * Handling a client logging in.
+         */
         private void handleLogin() throws IOException {
             final String pseudo = client_instr.substring(client_instr.indexOf(" ")+1);
 
+            // Register the client as connected
             connectClient(client, pseudo);
+            // Send a success to the client
             client.write(ByteBuffer.wrap(ChatamuProtocol.LOGIN_SUCCESS.getBytes()));
+
+            // Broadcast to other client that an user connected
+            final String msg = pseudo + " connected !";
+            broadcastMessageFrom(msg, client);
+
             System.out.println(pseudo + " connected !"); // TODO better server output ?
         }
 
+        /**
+         * Handling a client logging out.
+         */
         private void handleLogout() throws IOException {
+            // Broadcast to other client that an user disconnected
+            final String msg = this.client_pseudo + " disconnected !";
+            broadcastMessageFrom(msg, client);
+            // Unregister the client from connected lists
             disconnectClient(client);
+            // Close the socket
             client.close();
         }
 
+        /**
+         * Handling a message reception.
+         */
         private void handleMessage() {
             final String content = client_instr.substring(client_instr.indexOf(" ")+1);
-            final String pseudo = getClientPseudo(client_addr);
 
-            String message = pseudo + "> " + content;
-            System.out.println(message); // TODO better server output ?
+            // Sending message to everyone
+            final String msg = this.client_pseudo + "> " + content;
+            broadcastMessageFrom(msg, client);
 
-            // Sending message to everyonee
-            broadcastMessageFrom(message, client);
+            System.out.println(msg); // TODO better server output ?
         }
 
+        /**
+         * Handling of unknown instructions sent by a client.
+         */
         private void handleUnknownInstr() throws IOException {
             try {
+                // Try to send an error message
                 client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_MESSAGE.getBytes()));
             } catch (IOException ioe) {
+                // If it fail consider the client as dead, disconnect and close socket
                 disconnectClient(client);
                 client.close();
             }
