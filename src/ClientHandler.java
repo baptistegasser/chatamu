@@ -91,7 +91,7 @@ public class ClientHandler {
 
                 final String[] split = client_instr.split(" ", 2);
                 final String prefix = split[0];
-                final String content = split[1];
+                final String content = split.length > 1 ? split[1] : "";
 
                 // First instruction to check: Client trying to loging
                 if (prefix.equals(ChatamuProtocol.PREFIX_LOGIN)) {

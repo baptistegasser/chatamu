@@ -145,7 +145,7 @@ public class Client {
                     } else {
                         final String[] split = response.split(" ", 2);
                         final String prefix = split[0];
-                        final String content = split[1];
+                        final String content = split.length > 1 ? split[1] : "";
 
                         switch (prefix) {
                             case ChatamuProtocol.PREFIX_USER_CONNECTED:
