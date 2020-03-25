@@ -46,6 +46,7 @@ public class Server {
 
         // Infinite server loop
         while (true) {
+            selector.select();
 
             // Iterate on the selected keys
             for (SelectionKey key : selector.selectedKeys()) {
