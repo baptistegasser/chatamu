@@ -55,13 +55,15 @@ public class Server {
                     try {
                         SocketChannel client = serverSocket.accept();
                         client.configureBlocking(false);
-                        client.register(selector, SelectionKey.OP_READ);
+                        client.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
                     } catch (IOException ioe) {
                         System.err.println("Failed to accept a client.");
                         ioe.printStackTrace();
                     }
                 } else if (key.isReadable()) {
                     clientHandler.handleRead(key);
+                } else if (key.isWritable()) {
+                    System.out.println("ta mere le consomateur");
                 }
             }
             // Remove the iterated keys
