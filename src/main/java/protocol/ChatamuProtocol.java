@@ -13,6 +13,7 @@ public final class ChatamuProtocol {
     public static final String PREFIX_MESSAGE  = "MESSAGE";
     public static final String PREFIX_USER_CONNECTED  = "USER_CONNECTED";
     public static final String PREFIX_USER_DISCONNECTED  = "USER_DISCONNECTED";
+    public static final String PREFIX_MESSAGE_FROM = "MESSAGE_FROM";
 
     public static final String LOGOUT_MESSAGE = "LOGOUT";
     public static final String LOGIN_SUCCESS = "OK LOGIN";
