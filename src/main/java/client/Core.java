@@ -1,5 +1,6 @@
 package client;
 
+import client.event.EventDispatcher;
 import client.event.EventHandler;
 import protocol.ChatamuProtocol;
 
@@ -19,43 +20,16 @@ public class Core {
     }
 
     public void start() {
-        assertNotStarted();
-        threadExecutor.submit(socketHandler);
-    }
-
-    private void assertNotStarted() {
         if (socketHandler.isStarted) {
             throw new IllegalStateException("Client handler is already started !");
         }
-    }
-
-    public void setOnError(EventHandler handler) {
-        assertNotStarted();
-        this.socketHandler.onError = handler;
-    }
-
-    public void setOnMessage(EventHandler handler) {
-        assertNotStarted();
-        this.socketHandler.onMessage = handler;
-    }
-
-    enum LoggingStatus {
-        UNKNOWN,  // Base status when not connected
-        SUCCESS,  // Status when login was success full
-        FAILED,   // Status when login failed
+        threadExecutor.submit(socketHandler);
     }
 
     class SocketHandler implements Runnable {
-        private EventHandler onError;
-        private EventHandler onMessage;
-        private EventHandler onUserLeft;
-        private EventHandler onUserJoined;
-        private EventHandler onConnectionLost;
+        private final EventDispatcher dispatcher;
 
-        private boolean isLogged;
         private boolean isStarted;
-        private LoggingStatus loggingStatus;
-
         private int port;
         private String address;
         private Socket socket;
@@ -63,17 +37,11 @@ public class Core {
         private OutputStream outputStream;
 
         public SocketHandler(String address, int port) {
-            this.onError = event -> System.out.println("default error handling");
-            this.onMessage = event -> System.out.println("default message handling");
-            this.onUserLeft = event -> System.out.println("default handling of user who left");
-            this.onUserJoined = event -> System.out.println("default handling of user who joined");
-            this.onConnectionLost = event -> System.out.println("default handling of connection lost");
+            this.dispatcher = EventDispatcher.getInstance();
 
             this.port = port;
             this.address = address;
-            this.isLogged = false;
             this.isStarted = false;
-            this.loggingStatus = LoggingStatus.UNKNOWN;
         }
 
         @Override
@@ -138,9 +106,6 @@ public class Core {
          * @param pseudo The pseudo to use
          */
         private void login(String pseudo) {
-            // Don't login if already logged in
-            if (isLogged()) return;
-            // Send login message
             this.write(ChatamuProtocol.prefixContent(ChatamuProtocol.PREFIX_LOGIN, pseudo.trim()));
         }
 
@@ -149,14 +114,6 @@ public class Core {
          */
         private void logout() {
             this.write(ChatamuProtocol.LOGOUT_MESSAGE);
-            this.loggingStatus = LoggingStatus.UNKNOWN;
-        }
-
-        /**
-         * @return A boolean stating if the user is logged or not
-         */
-        private boolean isLogged() {
-            return this.loggingStatus == LoggingStatus.SUCCESS;
         }
     }
 }
