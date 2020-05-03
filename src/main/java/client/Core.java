@@ -1,7 +1,8 @@
 package client;
 
+import client.event.Event;
 import client.event.EventDispatcher;
-import client.event.EventHandler;
+import client.event.EventFactory;
 import protocol.ChatamuProtocol;
 
 import java.io.IOException;
@@ -24,6 +25,18 @@ public class Core {
             throw new IllegalStateException("Client handler is already started !");
         }
         threadExecutor.submit(socketHandler);
+    }
+
+    public void sendMessage(String content) {
+        this.socketHandler.sendMessage(content);
+    }
+
+    public void login(String pseudo) {
+        this.socketHandler.login(pseudo);
+    }
+
+    public void logout() {
+        this.socketHandler.logout();
     }
 
     class SocketHandler implements Runnable {
@@ -53,25 +66,66 @@ public class Core {
                 this.outputStream = socket.getOutputStream();
 
                 while (!socket.isClosed()) {
-                    // TODO
+                    final String serverMessage = this.read();
+                    if (serverMessage == null) continue;
+
+                    if (serverMessage.startsWith("ERROR")) {
+                        handleError(serverMessage);
+                    } else if (serverMessage.startsWith("USER")) {
+                        handlerUserOperation(serverMessage);
+                    } else if (serverMessage.startsWith(ChatamuProtocol.PREFIX_MESSAGE_FROM)) {
+                        handleUserMessage(serverMessage);
+                    } else if (serverMessage.equals(ChatamuProtocol.LOGIN_SUCCESS)) {
+                        dispatcher.dispatchEvent(EventDispatcher.EventTypes.LOGIN_SUCCESS, null);
+                    } else {
+                        System.err.println("Received an unsupported server message !");
+                        System.err.println("Server's message : "+serverMessage);
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
 
-        /**
-         * Function to send a message to the server
-         * @param message The message to send
-         */
-        private void write(String message) {
-            try {
-                final byte[] bytes = message.getBytes();
-                outputStream.write(bytes);
-                outputStream.flush();
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
+        private void handleError(String serverMessage) {
+            if (serverMessage.equals(ChatamuProtocol.Error.ERROR_LOGIN)) {
+                dispatcher.dispatchEvent(EventDispatcher.EventTypes.LOGIN_FAIL, EventFactory.createErrorEvent("Login failed"));
+            } else {
+                System.err.println("Unknown error : " + serverMessage);
+                dispatcher.dispatchEvent(EventDispatcher.EventTypes.ERROR, EventFactory.createErrorEvent(serverMessage));
             }
+        }
+
+        private void handlerUserOperation(String serverMessage) {
+            final String[] split = serverMessage.split(" ", 2);
+            if (split.length != 2 ) {
+                System.err.println("Server sent an incomplete user operation");
+                return;
+            }
+            Event e = new Event();
+            e.pseudo = split[1];
+            switch (split[0]) {
+                case ChatamuProtocol.PREFIX_USER_CONNECTED:
+                    dispatcher.dispatchEvent(EventDispatcher.EventTypes.USER_JOINED, e);
+                    break;
+                case ChatamuProtocol.PREFIX_USER_DISCONNECTED:
+                    dispatcher.dispatchEvent(EventDispatcher.EventTypes.USER_LEAVED, e);
+                    break;
+                default:
+                    System.err.println("Server sent an invalid user operation");
+            }
+        }
+
+        private void handleUserMessage(String serverMessage) {
+            final String[] split = serverMessage.split(" ", 3);
+            if (split.length != 3 ) {
+                System.err.println("Server sent an incomplete message");
+                return;
+            }
+            final String pseudo = split[1];
+            final String message = split[2];
+
+            dispatcher.dispatchEvent(EventDispatcher.EventTypes.MESSAGE, EventFactory.createMessageEvent(pseudo,message));
         }
 
         /**
@@ -90,6 +144,20 @@ public class Core {
             } catch (IOException ioe) {
                 ioe.printStackTrace();
                 return null;
+            }
+        }
+
+        /**
+         * Function to send a message to the server
+         * @param message The message to send
+         */
+        private void write(String message) {
+            try {
+                final byte[] bytes = message.getBytes();
+                outputStream.write(bytes);
+                outputStream.flush();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
             }
         }
 
