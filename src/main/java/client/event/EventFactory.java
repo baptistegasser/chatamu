@@ -1,13 +1,13 @@
 package client.event;
 
 public class EventFactory {
-    static Event createErrorEvent(String errorMessage) {
+    public static Event createErrorEvent(String errorMessage) {
         Event e = new Event();
         e.errorMessage = errorMessage;
         return e;
     }
 
-    static Event createMessageEvent(String pseudo, String message) {
+    public static Event createMessageEvent(String pseudo, String message) {
         Event e = new Event();
         e.pseudo = pseudo;
         e.message = message;

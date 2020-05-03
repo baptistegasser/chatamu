@@ -136,10 +136,10 @@ public class Core {
             try {
                 byte[] buf = new byte[ChatamuProtocol.BUFFER_SIZE];
                 int size = inputStream.read(buf);
-                if (size >= 0) {
+                if (size <= 0) {
                     return null;
                 } else {
-                    return new String(buf);
+                    return new String(buf).trim();
                 }
             } catch (IOException ioe) {
                 ioe.printStackTrace();
