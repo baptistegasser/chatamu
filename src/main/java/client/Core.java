@@ -39,6 +39,12 @@ public class Core {
         this.socketHandler.onMessage = handler;
     }
 
+    enum LoggingStatus {
+        UNKNOWN,  // Base status when not connected
+        SUCCESS,  // Status when login was success full
+        FAILED,   // Status when login failed
+    }
+
     class SocketHandler implements Runnable {
         private EventHandler onError;
         private EventHandler onMessage;
@@ -48,6 +54,7 @@ public class Core {
 
         private boolean isLogged;
         private boolean isStarted;
+        private LoggingStatus loggingStatus;
 
         private int port;
         private String address;
@@ -66,6 +73,7 @@ public class Core {
             this.address = address;
             this.isLogged = false;
             this.isStarted = false;
+            this.loggingStatus = LoggingStatus.UNKNOWN;
         }
 
         @Override
@@ -118,26 +126,37 @@ public class Core {
         }
 
         /**
-         * Attempt to login on the server
-         * @param pseudo The pseudo to use
-         * @return A boolean representing the success of the login attempt
+         * Send a message instruction to the server
+         * @param content The content of the message
          */
-        private boolean loggin(String pseudo) {
-            // Don't loggin if already logged in
-            if (isLogged) return true;
-            // Send login message
-            this.write(ChatamuProtocol.prefixContent(ChatamuProtocol.PREFIX_LOGIN, pseudo.trim()));
-            // Get the response from the server
-            final String response = this.read();
-            this.isLogged = response != null && response.equals(ChatamuProtocol.LOGIN_SUCCESS);
-            return isLogged;
+        private void sendMessage(String content) {
+            this.write(ChatamuProtocol.prefixContent(ChatamuProtocol.PREFIX_MESSAGE, content).trim());
         }
 
         /**
-         * Send a logout message
+         * Send a login instruction to the server
+         * @param pseudo The pseudo to use
+         */
+        private void login(String pseudo) {
+            // Don't login if already logged in
+            if (isLogged()) return;
+            // Send login message
+            this.write(ChatamuProtocol.prefixContent(ChatamuProtocol.PREFIX_LOGIN, pseudo.trim()));
+        }
+
+        /**
+         * Send a logout instruction to the server
          */
         private void logout() {
             this.write(ChatamuProtocol.LOGOUT_MESSAGE);
+            this.loggingStatus = LoggingStatus.UNKNOWN;
+        }
+
+        /**
+         * @return A boolean stating if the user is logged or not
+         */
+        private boolean isLogged() {
+            return this.loggingStatus == LoggingStatus.SUCCESS;
         }
     }
 }
