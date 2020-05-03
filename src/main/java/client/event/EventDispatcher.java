@@ -1,4 +1,4 @@
-package client;
+package client.event;
 
 import java.util.*;
 

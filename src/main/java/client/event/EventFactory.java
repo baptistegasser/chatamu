@@ -1,4 +1,4 @@
-package client;
+package client.event;
 
 public class EventFactory {
     static Event createErrorEvent(String errorMessage) {
