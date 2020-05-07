@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.gui.controllers.LoginController">
+   <children>
+      <TextField fx:id="serverAddressField" layoutX="227.0" layoutY="130.0" text="127.0.0.1" />
+      <TextField fx:id="serverPortField" layoutX="227.0" layoutY="188.0" text="12345" />
+      <TextField fx:id="pseudoField" layoutX="226.0" layoutY="252.0" text="foo" />
+      <Button layoutX="275.0" layoutY="301.0" mnemonicParsing="false" onAction="#login" text="Login" />
+      <Label layoutX="227.0" layoutY="113.0" text="Server address" />
+      <Label layoutX="227.0" layoutY="171.0" text="Server port" />
+      <Label layoutX="226.0" layoutY="235.0" text="Pseudo" />
+   </children>
+</AnchorPane>

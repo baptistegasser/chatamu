@@ -8,23 +8,49 @@ import protocol.ChatamuProtocol;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 public class Core {
-    private SocketHandler socketHandler;
-    ExecutorService threadExecutor = Executors.newSingleThreadExecutor();
+    private final SocketHandler socketHandler;
+    private final ExecutorService threadExecutor;
+    private final Semaphore isStartingSemaphore;
+    private String errorMessage = null;
 
     public Core(String address, int port) {
         this.socketHandler = new SocketHandler(address, port);
+        this.threadExecutor = Executors.newSingleThreadExecutor();
+        this.isStartingSemaphore = new Semaphore(1);
     }
 
-    public void start() {
+    public boolean start() {
         if (socketHandler.isStarted) {
             throw new IllegalStateException("Client handler is already started !");
         }
-        threadExecutor.submit(socketHandler);
+        try {
+            isStartingSemaphore.acquire();
+            threadExecutor.submit(socketHandler);
+            isStartingSemaphore.acquire();
+            isStartingSemaphore.release();
+            if (!socketHandler.isStarted) {
+                if (socketHandler.connectionFailed) {
+                    this.errorMessage = "Failed to connect to the server at " +  socketHandler.address + ":" + socketHandler.port;
+                } else {
+                    this.errorMessage = "Failed to start the handler";
+                }
+                return false;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+    public String getErrorMessage() {
+        return this.errorMessage;
     }
 
     public void sendMessage(String content) {
@@ -39,15 +65,23 @@ public class Core {
         this.socketHandler.logout();
     }
 
+    public void close() {
+        socketHandler.close();
+        threadExecutor.shutdown();
+    }
+
     class SocketHandler implements Runnable {
         private final EventDispatcher dispatcher;
 
         private boolean isStarted;
-        private int port;
-        private String address;
-        private Socket socket;
+        private boolean shouldClose;
+        private boolean connectionFailed;
+
+        private final int port;
+        private final String address;
         private InputStream inputStream;
         private OutputStream outputStream;
+        private Socket socket;
 
         public SocketHandler(String address, int port) {
             this.dispatcher = EventDispatcher.getInstance();
@@ -55,15 +89,19 @@ public class Core {
             this.port = port;
             this.address = address;
             this.isStarted = false;
+            this.shouldClose = false;
+            this.connectionFailed = false;
         }
 
         @Override
         public void run() {
             try {
-                this.isStarted = true;
-                this.socket = new Socket(address, port);
+                socket = new Socket(address, port);
                 this.inputStream = socket.getInputStream();
                 this.outputStream = socket.getOutputStream();
+
+                isStartingSemaphore.release();
+                this.isStarted = true;
 
                 while (!socket.isClosed()) {
                     final String serverMessage = this.read();
@@ -82,8 +120,11 @@ public class Core {
                         System.err.println("Server's message : "+serverMessage);
                     }
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException ioe) {
+                this.connectionFailed = ioe instanceof ConnectException;
+                isStartingSemaphore.release();
+                System.err.println(this.connectionFailed ? "Connection to server failed" : "I/O operation failed");
+                ioe.printStackTrace();
             }
         }
 
@@ -142,7 +183,7 @@ public class Core {
                     return new String(buf).trim();
                 }
             } catch (IOException ioe) {
-                ioe.printStackTrace();
+                if (!socket.isClosed()) ioe.printStackTrace();
                 return null;
             }
         }
@@ -157,6 +198,21 @@ public class Core {
                 outputStream.write(bytes);
                 outputStream.flush();
             } catch (IOException ioe) {
+                System.err.println("Core: Write operation failed.");
+                ioe.printStackTrace();
+            }
+        }
+
+        /**
+         * Close the connection
+         */
+        private void close() {
+            try {
+                socket.getOutputStream().flush();
+                socket.getInputStream().close();
+                socket.close();
+            } catch (IOException ioe) {
+                System.err.println("Core: Closing connection failed.");
                 ioe.printStackTrace();
             }
         }
