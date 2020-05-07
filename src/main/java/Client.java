@@ -5,6 +5,9 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.Scanner;
 
+/**
+ * Client with a socket, an inputStream/outputStream to read/write
+ */
 public class Client {
     private final Socket socket;
     private final InputStream inputStream;
@@ -59,6 +62,10 @@ public class Client {
         outputStream.flush();
     }
 
+    /**
+     * Launching client.
+     * You have to choose your name, and then you can start chating. Protocol is automatic.
+     */
     public void launch() throws IOException {
         final Scanner scanner = new Scanner(System.in);
 
@@ -105,7 +112,7 @@ public class Client {
     }
 
     /**
-     * Handler charged of reading the message sent by the server
+     * Handler charged of reading the message sent by the server (which can be errors or other clients messages)
      */
     class HandlerReceived implements Runnable {
         public void run () {
@@ -173,6 +180,7 @@ public class Client {
         final String adress = "localhost";
 
         // Parse arguments if any
+        // If you dont specify a port with the option, the default port will be 12345
         if (args.length >= 2) {
             if (args[0].equals("--port")) {
                 try {
