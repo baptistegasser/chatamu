@@ -9,7 +9,12 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+/**
+ * Permet d'avoir un serveur central avec une architecture à base de file d'attente
+ */
 public class ClientHandler {
+
+    // File d'attente
     private Queue<SocketChannel> connectedClientsSocket = new ConcurrentLinkedQueue<>();
     private ConcurrentHashMap<SocketAddress, String> clientPseudoMap = new ConcurrentHashMap<>();
 
@@ -17,24 +22,36 @@ public class ClientHandler {
         return connectedClientsSocket.contains(client);
     }
 
+    private String getClientPseudo(SocketAddress client_addr) {
+        return clientPseudoMap.get(client_addr);
+    }
+
+    /**
+     * Connect client
+     * @param client Socket
+     * @param pseudo
+     */
     private void connectClient(SocketChannel client, String pseudo) throws IOException {
         connectedClientsSocket.add(client);
         clientPseudoMap.put(client.getRemoteAddress(), pseudo);
     }
 
+    /**
+     * Disconnect client using its socket
+     * @param client Socket
+     */
     private void disconnectClient(SocketChannel client) throws IOException {
         connectedClientsSocket.remove(client);
         clientPseudoMap.remove(client.getRemoteAddress());
-    }
-
-    private String getClientPseudo(SocketAddress client_addr) {
-        return clientPseudoMap.get(client_addr);
     }
 
     public void handleRead (SelectionKey key) {
         new ReadHandler((SocketChannel) key.channel()).handle();
     }
 
+    /**
+     * Reading messages from client
+     */
     private class ReadHandler {
         private final SocketChannel client;
         private final SocketAddress client_addr;
@@ -68,6 +85,10 @@ public class ClientHandler {
             }
         }
 
+        /**
+         * Sending messages to all client but the current one
+         * @param message The message
+         */
         private void broadcastMessage(String message) {
             for (SocketChannel remoteClient : connectedClientsSocket) {
                 // Don't send to current client
@@ -81,6 +102,10 @@ public class ClientHandler {
             }
         }
 
+        /**
+         * Handle message reception
+         * Checking protocol for connexion and messages
+         */
         public void handle() {
             try {
                 // Read the from the socket channel
@@ -158,7 +183,8 @@ public class ClientHandler {
             final String msg = this.client_pseudo + "> " + content;
             broadcastMessage(msg);
 
-            System.out.println(msg); // TODO better server output ?
+            // Print the message received with the pseudo
+            System.out.println(msg);
         }
 
         /**
@@ -169,7 +195,7 @@ public class ClientHandler {
                 // Try to send an error message
                 client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_MESSAGE.getBytes()));
             } catch (IOException ioe) {
-                // If it fail consider the client as dead and logout
+                // If it fail consider the client is dead and logout
                 handleLogout();
             }
         }
