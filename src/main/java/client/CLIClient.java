@@ -1,11 +1,13 @@
 package client;
 
 import client.event.Event;
+import protocol.ChatamuProtocol;
 
 import java.util.Scanner;
 import java.util.concurrent.Semaphore;
 
-public class CLIClient extends AbstractClient {
+public class CLIClient implements IClient {
+    private final Core core;
     private String pseudo;
     private final Scanner scanner;
     private boolean isLogged;
@@ -16,16 +18,18 @@ public class CLIClient extends AbstractClient {
     }
 
     public CLIClient(String address, int port, String pseudo) {
-        super(address, port);
+        this.core = new Core(address, port);
         this.pseudo = pseudo;
         this.scanner = new Scanner(System.in);
         this.isLogged = false;
         this.loggedSemaphore = new Semaphore(1);
         this.loggedSemaphore.tryAcquire();
+
+        IClient.registerClientListeners(this);
     }
 
-    @Override
-    protected void launch() {
+    protected void start() {
+        core.start();
         this.tryToLogin();
         this.loggedSemaphore.tryAcquire();
         this.loggedSemaphore.release();
@@ -54,41 +58,78 @@ public class CLIClient extends AbstractClient {
     }
 
     @Override
-    protected void onError(Event event) {
+    public void onError(Event event) {
         System.out.printf("Error: %s%n", event.message);
     }
 
     @Override
-    protected void onLoginFail(Event event) {
+    public void onLoginFail(Event event) {
         System.out.println("Login attempt as '"+this.pseudo+"' failed, please try again");
         this.pseudo = null;
         this.tryToLogin();
     }
 
     @Override
-    protected void onLoginSuccess(Event event) {
+    public void onLoginSuccess(Event event) {
         System.out.println("Logged in succesfully !\nYou can start sending message.");
         this.isLogged = true;
         this.loggedSemaphore.release();
     }
 
     @Override
-    protected void onMessage(Event event) {
-        System.out.printf("%s > %s.%n", event.pseudo, event.message);
+    public void onMessage(Event event) {
+        System.out.printf("%s > %s%n", event.pseudo, event.message);
     }
 
     @Override
-    protected void onUserJoined(Event event) {
+    public void onUserJoined(Event event) {
         System.out.printf("%s joined.%n", event.pseudo);
     }
 
     @Override
-    protected void onUserLeaved(Event event) {
+    public void onUserLeaved(Event event) {
         System.out.printf("%s left.%n", event.pseudo);
     }
 
+    /**
+     * Create a new CLI client and start it
+     * @param args Optional arguments
+     */
     public static void main(String[] args) {
-        AbstractClient client = new CLIClient("127.0.0.1", 12345);
-        client.start();
+        // Default value for the client connection
+        int port = ChatamuProtocol.DEFAULT_PORT;
+        final String address = "localhost";
+
+        // Parse arguments if any
+        // If you dont specify a port with the option, the default port will be 12345
+        if (args.length >= 2) {
+            if (args[0].equals("--port")) {
+                try {
+                    port = Integer.parseInt(args[1]);
+                } catch (NumberFormatException e) {
+                    showUsage();
+                    System.exit(-1);
+                }
+            }
+        }
+
+        // Start the client and handle error
+        CLIClient client = null;
+        try {
+            client = new CLIClient(address, port);
+            client.start();
+        } catch (Exception e) {
+            System.err.println("Unexpected client failure, see stack trace below:");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Show how to use this program
+     */
+    private static void showUsage() {
+        System.out.println("Correct usage of this client:");
+        System.out.println("java CLIClient [--port n]");
+        System.out.printf("--port: n specify the target port, default to %d%n", ChatamuProtocol.DEFAULT_PORT);
     }
 }
