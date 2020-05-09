@@ -123,8 +123,8 @@ public class Core {
             } catch (IOException ioe) {
                 this.connectionFailed = ioe instanceof ConnectException;
                 isStartingSemaphore.release();
-                System.err.println(this.connectionFailed ? "Connection to server failed" : "I/O operation failed");
-                ioe.printStackTrace();
+                System.err.println("Core: " + (this.connectionFailed ? "Connection to server failed" : "I/O operation failed"));
+                //ioe.printStackTrace();
             }
         }
 

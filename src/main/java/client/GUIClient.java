@@ -102,6 +102,7 @@ public class GUIClient extends Application implements IClient {
             this.loginStage.close();
             this.inputController.setOnMessageSend(s -> {
                 this.core.sendMessage(s);
+                this.displayController.displayMessage(s);
                 return null;
             });
             this.displayStage(displayStage, "Chat display");
@@ -111,17 +112,17 @@ public class GUIClient extends Application implements IClient {
 
     @Override
     public void onMessage(Event event) {
-        this.displayController.displayMessageFrom(event.pseudo, event.message);
+        Platform.runLater(() -> this.displayController.displayMessageFrom(event.pseudo, event.message));
     }
 
     @Override
     public void onUserJoined(Event event) {
-        this.displayController.showUserJoined(event.pseudo);
+        Platform.runLater(() -> this.displayController.showUserJoined(event.pseudo));
     }
 
     @Override
     public void onUserLeaved(Event event) {
-        this.displayController.showUserLeaved(event.pseudo);
+        Platform.runLater(() -> this.displayController.showUserLeaved(event.pseudo));
     }
 
     /**

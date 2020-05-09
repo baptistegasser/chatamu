@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-
-<AnchorPane minHeight="100.0" minWidth="400.0" prefHeight="100.0" prefWidth="400.0" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.gui.controllers.MessageDisplayController">
-
+<AnchorPane minHeight="600.0" minWidth="300.0" prefHeight="600.0" prefWidth="300.0" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.gui.controllers.MessageDisplayController">
+   <children>
+      <ScrollPane fitToHeight="true" fitToWidth="true" layoutX="100.0" layoutY="400.0" prefHeight="600.0" prefWidth="300.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <content>
+            <VBox fx:id="messageContainer" prefHeight="600.0" prefWidth="300.0" spacing="5.0" style="-fx-background-color: lightgray;" />
+         </content></ScrollPane>
+   </children>
 </AnchorPane>
