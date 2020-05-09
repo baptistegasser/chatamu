@@ -77,8 +77,10 @@ public class GUIClient extends Application implements IClient {
     }
 
     private void quit() {
-        this.core.logout();
-        this.core.close();
+        if (this.core != null) {
+            this.core.logout();
+            this.core.close();
+        }
         loginStage.close();
         inputStage.close();
         displayStage.close();
@@ -88,12 +90,23 @@ public class GUIClient extends Application implements IClient {
 
     @Override
     public void onError(Event event) {
-
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText("An error occured");
+            alert.setTitle(event.errorMessage);
+            alert.showAndWait();
+            System.exit(-1);
+        });
     }
 
     @Override
     public void onLoginFail(Event event) {
-
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setHeaderText("Failed to login");
+            alert.setTitle(event.errorMessage);
+            alert.showAndWait();
+        });
     }
 
     @Override

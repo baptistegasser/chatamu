@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ConnectException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -121,10 +122,12 @@ public class Core {
                     }
                 }
             } catch (IOException ioe) {
-                this.connectionFailed = ioe instanceof ConnectException;
+                this.connectionFailed = ioe instanceof SocketException;
                 isStartingSemaphore.release();
-                System.err.println("Core: " + (this.connectionFailed ? "Connection to server failed" : "I/O operation failed"));
-                //ioe.printStackTrace();
+                if (isStarted) {
+                    final String message = (this.connectionFailed ? "Connection to server failed" : "I/O operation failed");
+                    dispatcher.dispatchEvent(EventDispatcher.EventTypes.ERROR, EventFactory.createErrorEvent(message));
+                }
             }
         }
 
@@ -173,7 +176,7 @@ public class Core {
          * Read a message from the server
          * @return The message read or null on error/empty message
          */
-        private String read() {
+        private String read() throws SocketException {
             try {
                 byte[] buf = new byte[ChatamuProtocol.BUFFER_SIZE];
                 int size = inputStream.read(buf);
@@ -182,6 +185,8 @@ public class Core {
                 } else {
                     return new String(buf).trim();
                 }
+            } catch (SocketException se) {
+                throw se;
             } catch (IOException ioe) {
                 if (!socket.isClosed()) ioe.printStackTrace();
                 return null;
