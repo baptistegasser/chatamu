@@ -181,7 +181,7 @@ public class ClientHandler {
 
             // Sending message to everyone
             final String msg = this.client_pseudo + "> " + content;
-            broadcastMessage(msg);
+            broadcastMessage(ChatamuProtocol.PREFIX_MESSAGE_FROM + " "+ this.client_pseudo + " " + msg);
 
             // Print the message received with the pseudo
             System.out.println(msg);

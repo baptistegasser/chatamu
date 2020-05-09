@@ -62,8 +62,6 @@ public class Server {
                     }
                 } else if (key.isReadable()) {
                     clientHandler.handleRead(key);
-                } else if (key.isWritable()) {
-                    System.out.println("ta mere le consomateur");
                 }
             }
             // Remove the iterated keys
