@@ -73,12 +73,13 @@ public class ClientHandler {
          * @param client The client's socket
          * @throws ServerException An exception if not connected
          */
-        private void assertIsConnected(SocketChannel client) throws ServerException {
-            if (isConnected(client)) return;
+        private boolean assertIsConnected(SocketChannel client) throws ServerException {
+            if (isConnected(client)) return true;
 
             // Try to notify the client and then Throw a ServerException as assert failed
             try {
                 client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
+                return false;
             } catch (IOException ioe) {
                 throw new ServerException(ServerException.Error.USER_NOT_CONNECTED, ioe);
             }
@@ -123,17 +124,18 @@ public class ClientHandler {
                     handleLogin();
                 } else {
                     // Other action should be sure that the user is connected
-                    assertIsConnected(client);
+                    if(assertIsConnected(client))
+                    {
+                        // As we are connected, retrieve the pseudo
+                        this.client_pseudo = getClientPseudo(client_addr);
 
-                    // As we are connected, retrieve the pseudo
-                    this.client_pseudo = getClientPseudo(client_addr);
-
-                    if (prefix.equals(ChatamuProtocol.LOGOUT_MESSAGE)) {
-                        handleLogout();
-                    } else if (prefix.equals(ChatamuProtocol.PREFIX_MESSAGE)) {
-                        handleMessage();
-                    } else {
-                        handleUnknownInstr();
+                        if (prefix.equals(ChatamuProtocol.LOGOUT_MESSAGE)) {
+                            handleLogout();
+                        } else if (prefix.equals(ChatamuProtocol.PREFIX_MESSAGE)) {
+                            handleMessage();
+                        } else {
+                            handleUnknownInstr();
+                        }
                     }
                 }
             } catch (IOException ioe) {
