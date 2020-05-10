@@ -79,7 +79,6 @@ public class ClientHandler {
             // Try to notify the client and then Throw a ServerException as assert failed
             try {
                 client.write(ByteBuffer.wrap(ChatamuProtocol.Error.ERROR_LOGIN.getBytes()));
-                throw new ServerException(ServerException.Error.USER_NOT_CONNECTED);
             } catch (IOException ioe) {
                 throw new ServerException(ServerException.Error.USER_NOT_CONNECTED, ioe);
             }
