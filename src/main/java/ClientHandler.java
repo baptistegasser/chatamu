@@ -181,11 +181,10 @@ public class ClientHandler {
             final String content = client_instr.substring(client_instr.indexOf(" ")+1);
 
             // Sending message to everyone
-            final String msg = this.client_pseudo + "> " + content;
-            broadcastMessage(ChatamuProtocol.PREFIX_MESSAGE_FROM + " "+ this.client_pseudo + " " + msg);
+            broadcastMessage(ChatamuProtocol.PREFIX_MESSAGE_FROM + " "+ this.client_pseudo + " " + content);
 
             // Print the message received with the pseudo
-            System.out.println(msg);
+            System.out.println(this.client_pseudo + "> " + content);
         }
 
         /**
