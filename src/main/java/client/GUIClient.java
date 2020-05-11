@@ -127,6 +127,7 @@ public class GUIClient extends Application implements IClient {
 
     @Override
     public void onMessage(Event event) {
+        if(event.message.equals("quit")) return;
         Platform.runLater(() -> this.displayController.displayMessageFrom(event.pseudo, event.message));
     }
 
