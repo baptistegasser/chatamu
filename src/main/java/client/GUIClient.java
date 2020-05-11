@@ -112,6 +112,10 @@ public class GUIClient extends Application implements IClient {
         Platform.runLater(() -> {
             this.loginStage.close();
             this.inputController.setOnMessageSend(s -> {
+                if(s.equals("quit")) {
+                    this.core.logout();
+                    System.exit(1);
+                }
                 this.core.sendMessage(s);
                 this.displayController.displayMessage(s);
                 return null;

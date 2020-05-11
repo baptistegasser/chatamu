@@ -118,6 +118,7 @@ public class CLIClient implements IClient {
         try {
             client = new CLIClient(address, port);
             client.start();
+            System.exit(1);
         } catch (Exception e) {
             System.err.println("Unexpected client failure, see stack trace below:");
             e.printStackTrace();
